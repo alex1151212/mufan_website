@@ -1,18 +1,16 @@
-from lib2to3.pytree import Base
-
-from pyrsistent import b
 
 
 dict1 = {"a":10}
 
 
-class test():
-    def __init__(self,a,b):
-        self.a = a
-        self.b = b 
+# class test():
+#     def __init__(self,a,b):
+#         self.a = a
+#         self.b = b 
 
-aa = test(**dict1)
+# aa = test(**dict1)
 
-dict1.update({"b":25})
-print(aa.b)
+# dict1.update({"b":25})
+# print(aa.b)
     
+print(dict1['a'])

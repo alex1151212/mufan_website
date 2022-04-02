@@ -1,4 +1,3 @@
-from numpy import deprecate
 from passlib.context import CryptContext
 
 pwd_cxt = CryptContext(schemes=['bcrypt'],deprecated="auto")

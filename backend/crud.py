@@ -1,12 +1,14 @@
 from typing import List
-from fastapi import Depends , HTTPException
+from fastapi import Depends , HTTPException, Response
 from sqlalchemy.orm import Session
+from database import get_db
 from schemas import User_addRoles,Role, User
 from hash import Hash
 import JWTtoken
 import models
 
 # Users CRUD
+
 
 async def register(db:Session,user:User):
 
@@ -36,7 +38,7 @@ async def getUserRoles(db:Session,username:str):
     user = db.query(models.User).filter(models.User.username==username).first()
     return user.roles
 
-async def loginUser(db:Session, userInput):
+async def loginUser(db:Session, userInput,response):
 
     user = db.query(models.User).filter(models.User.username==userInput.username).first()
     if not user : 
@@ -49,16 +51,63 @@ async def loginUser(db:Session, userInput):
             status_code= 401,
             detail = f"使用者帳號或密碼錯誤!"
         )
+    roles = []
+    for role in user.roles:
+        roles.append(role.name)
     access_token = JWTtoken.create_access_token(
         data={
             "user":user.username,
-            "roles":user.roles,
+            "roles":roles,
         }
     )
+    response.set_cookie(key="Authorization",value=access_token,httponly=True)
     return {
         "access_token":access_token ,
         "token_type":"bearer",
+        "user":user.username,
+        "roles":roles,
         }
+# async def logoutUser(response):
+
+#     response.set_cookie(key="Authorization")
+
+async def refreshToken(response,authToken,db:Session):
+    token = JWTtoken.decode_access_token(authToken)
+
+    user = db.query(models.User).filter(models.User.username==token['user']).first()
+    if not user : 
+        raise HTTPException(
+            status_code = 400 , 
+            detail = f'沒有此用戶'
+            )
+    roles = []
+    for role in user.roles:
+        roles.append(role.name)
+    access_token = JWTtoken.create_access_token(
+        data={
+            "user":user.username,
+            "roles":roles,
+        }
+    )
+    response.set_cookie(key="Authorization",value=access_token,httponly=True)
+    return {
+        "accessToken":access_token ,
+        "token_type":"bearer",
+        "user":user.username,
+        "roles":roles,
+        } 
+    
+# async def refreshToken(db:Session):
+
+#     user = db.query(models.User).filter(models.User.username==username).first()
+#     JWTtoken.create_access_token(
+#         data={
+#             "user":user.username,
+#             "roles":roles,
+#         }
+#     )
+# async def getUserbyRole_all(db:Session):
+#     db.query(models.User)
 
 # Roles CRUD
 
