@@ -1,4 +1,7 @@
 fastapi[all]
 python-jose
 passlib
-
+sqlalchemy
+pillow
+aiofiles
+bcrypt

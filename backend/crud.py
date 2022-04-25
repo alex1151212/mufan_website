@@ -191,4 +191,4 @@ async def deleteRole_byName(db:Session,role_name:str, ):
     role.delete(synchronize_session=False)
     db.commit()
     
-    return "Delete Role Success!"
+    return "Delete Role Successfully!"

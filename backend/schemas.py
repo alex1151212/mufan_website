@@ -18,3 +18,5 @@ class Role(BaseModel):
 class User_addRoles(BaseModel):
     name:str
 
+class User_updateImage(User):
+    pass
