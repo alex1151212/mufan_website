@@ -2,7 +2,7 @@ from typing import List
 from fastapi import Depends , HTTPException, Response
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import User_addRoles,Role, User
+from schemas import *
 from hash import Hash
 import JWTtoken
 import models
@@ -10,7 +10,7 @@ import models
 # Users CRUD
 
 
-async def register(db:Session,user:User):
+async def register(db:Session,user:CreateUser):
 
     new_user = models.User(
         username=user.username,
@@ -58,20 +58,24 @@ async def loginUser(db:Session, userInput,response):
         data={
             "user":user.username,
             "roles":roles,
+            'user_id':user.id
         }
     )
-    response.set_cookie(key="Authorization",value=access_token,httponly=True)
+    refresh_token = JWTtoken.create_access_token(
+        data={
+            "user":user.username,
+        }
+    )
+    response.set_cookie(key="jwt",value=refresh_token,httponly=True)
     return {
         "access_token":access_token ,
         "token_type":"bearer",
         "user":user.username,
         "roles":roles,
         }
-# async def logoutUser(response):
 
-#     response.set_cookie(key="Authorization")
 
-async def refreshToken(response,authToken,db:Session):
+async def refreshToken(authToken,db:Session):
     token = JWTtoken.decode_access_token(authToken)
 
     user = db.query(models.User).filter(models.User.username==token['user']).first()
@@ -87,29 +91,16 @@ async def refreshToken(response,authToken,db:Session):
         data={
             "user":user.username,
             "roles":roles,
-        }
+            'user_id':user.id
+        },
+        expire_delta=0.5
     )
-    response.set_cookie(key="Authorization",value=access_token,httponly=True)
     return {
         "accessToken":access_token ,
         "token_type":"bearer",
         "user":user.username,
         "roles":roles,
         } 
-    
-# async def refreshToken(db:Session):
-
-#     user = db.query(models.User).filter(models.User.username==username).first()
-#     JWTtoken.create_access_token(
-#         data={
-#             "user":user.username,
-#             "roles":roles,
-#         }
-#     )
-# async def getUserbyRole_all(db:Session):
-#     db.query(models.User)
-
-# Roles CRUD
 
 async def addUserRoles(db:Session,username:User_addRoles,roles:List[str]):
     
@@ -123,10 +114,9 @@ async def addUserRoles(db:Session,username:User_addRoles,roles:List[str]):
         user_role.roles.append(R)
 
     db.commit()
-
     return "Roles Add Success!"
 
-async def createRole(db:Session,role:Role):
+async def createRole(db:Session,role:CreateRole):
 
     new_role = models.Role(
         name=role.name

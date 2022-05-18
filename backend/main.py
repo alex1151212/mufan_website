@@ -9,15 +9,16 @@ from schemas import User,Role,User_addRoles
 from oauth import get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from routers import user
+from routers import user,post
 
 import JWTtoken
+
 
 from crud import *
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000",
+    "http://localhost:3000/",
 ]
 
 app.add_middleware(
@@ -25,12 +26,13 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=['*'],
 )
 
 app.mount('/static',StaticFiles(directory="static"),name="static")
 
-app.include_router(user.userApp)
+app.include_router(user.app)
+app.include_router(post.app)
 
 Base.metadata.create_all(bind=engine)
 

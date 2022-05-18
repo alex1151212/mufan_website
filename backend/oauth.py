@@ -13,7 +13,8 @@ def get_current_user(token:str = Depends(oauth2_scheme)):
         payload = jwt.decode(token,SECRET_KEY,ALGORITHM)
         user = payload.get("user")
         roles = payload.get("roles")
-        return {"user":user,"role":roles}
+        user_id=payload.get('user_id')
+        return {"user":user,"role":roles,"user_id":user_id}
     except:
         raise HTTPException(
             status_code=401, detail="Invalid Email or Password"
