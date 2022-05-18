@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from '../api/axios';
-
+import useAuth from "../hook/useAuth";
 import { Link, useNavigate} from 'react-router-dom';
 
 const LOGIN_URL = "/login";
@@ -9,13 +9,14 @@ const Login = () => {
 
     const navigate = useNavigate();
     // const location = useLocation();
+    const {auth,setAuth} = useAuth()
 
     const [user, setUser] = useState();
     const [pwd, setPwd] = useState();
 
-    useEffect(() => {
-        // console.log(JSON.stringify(`grant_type=&username=${user}&password=${pwd}&scope=&client_id=&client_secret=`));
-    }, []);
+    // useEffect(() => {
+    //     // console.log(JSON.stringify(`grant_type=&username=${user}&password=${pwd}&scope=&client_id=&client_secret=`));
+    // }, []);
 
     const OnSubmit = async (e) => {
         e.preventDefault();
@@ -29,9 +30,16 @@ const Login = () => {
                     withCredentials: true
                 }
             );
-            console.log(response?.data.roles);
-            
-            navigate("/")
+
+            // console.log(response?.data.roles);
+            console.log(response?.data);
+
+            const accessToken = response?.data?.access_token;
+            const roles = response?.data?.roles;
+
+            setAuth({accessToken,roles,user})
+
+            navigate("/profile")
         }
         catch(err) {
             console.log(err);

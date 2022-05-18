@@ -13,7 +13,7 @@ const Test = () =>{
 
 
     return(
-        <h1></h1>
+        <h1>test</h1>
     );
 };
 

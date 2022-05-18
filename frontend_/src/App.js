@@ -5,11 +5,12 @@ import Layout from './components/Layout';
 import Login from './components/Login';
 import Test from './components/Test';
 import RequireAuth from './components/RequireAuth'
-
+import Unauthorized from './components/Unauthorized';
+import Profile from './components/Profile';
 const ROLES = {
-  'User': "1",
-  'Editor': "2",
-  'Admin': "3"
+  'User': "User",
+  'Editor': "Editor",
+  'Admin': "Admin"
 }
 
 function App() {
@@ -17,10 +18,13 @@ function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route path="login" element={<Login/>} />
-        <Route path="test" element={<Test/>} />
+        <Route path="unauthorized" element={<Unauthorized />} />
+
         <Route element={<RequireAuth allowedRoles={[ROLES.User]} />}>
-            <Route path="/test" element={<Test />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="test" element={<Test />} />
         </Route>
+
       </Route>
     </Routes>
   );

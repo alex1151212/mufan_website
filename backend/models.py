@@ -31,7 +31,7 @@ class User(Base):
     id = Column(Integer,primary_key=True,autoincrement=True)
     username = Column(String(16),unique=True,nullable=False,comment='使用者名稱')
     password = Column(String(50),unique=False,nullable=False,comment='密碼')
-    roles = Column(String(10),nullable=True,comment="roles",default="User")
+    # roles = Column(String(10),nullable=True,comment="roles",default="User")
     email = Column(String(100),nullable=True,comment="電子信箱")
     phone = Column(String(10),nullable=True,comment="電話")
     profile_img = Column(String(100),nullable=True)

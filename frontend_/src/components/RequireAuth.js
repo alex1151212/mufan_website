@@ -6,15 +6,8 @@ import { useEffect } from "react";
 
 
 const RequireAuth = ({allowedRoles}) => {
-    const {auth,setAuth} = useAuth();
+    const {auth} = useAuth();
 
-    useEffect(()=>{
-        setAuth(prev=>{
-            console.log(JSON.stringify(prev));
-        })
-    },[])
-
-    console.log(setAuth());
     // const location = useLocation();
 
     return (

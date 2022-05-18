@@ -99,6 +99,14 @@ async def userMe(user = Depends(get_current_user)):
         
     return user
 
+@app.get("/profile",tags=["User"],response_model=UserAll)
+async def userMe(db:Session=Depends(get_db) ,user = Depends(get_current_user)):
+        
+    profile = db.query(models.User).filter(models.User.username == user["user"]).one_or_none()
+    
+    
+    return profile
+
 @app.post("/userRoles/add",tags=["User"])
 async def add_user_roles(username:User_addRoles,roles:List[str],db:Session=Depends(get_db)):
 
@@ -107,7 +115,7 @@ async def add_user_roles(username:User_addRoles,roles:List[str],db:Session=Depen
 @app.get("/refresh",tags=["User"])
 async def refresh_token(jwt:Optional[str]=Cookie(None), db:Session=Depends(get_db)):
     
-    return await refreshToken(jw,db)
+    return await refreshToken(jwt,db)
 
 
 @app.post("/role" , tags=["Role"])
