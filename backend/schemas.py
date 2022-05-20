@@ -1,5 +1,6 @@
 
 from ast import Str
+from distutils.util import strtobool
 import email
 from pyexpat import model
 from typing import List, Optional
@@ -19,19 +20,23 @@ class Role(BaseModel):
     users:List[int]=None
 class CreateRole(BaseModel):
     name:str
-
-# class Role_users(BaseModel):
-#     users:List[int]
 class User_addRoles(BaseModel):
     name:str
 
-# class User_updateImage(User):
-#     pass
+class Ticketing(BaseModel):
+    title:str
+    price:int
+    description:str
+    tickets :int
+    isSoldout:Optional[bool] = False
 
+class CreateTicketing(Ticketing):
+    id:int
+
+# ResponseModel for Profile
 class Post(BaseModel):
     title:str
     images:List[str]
-
     class Config:
         orm_mode = True
 

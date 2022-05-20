@@ -1,5 +1,17 @@
+from email.policy import default
+from xmlrpc.client import Boolean
 from fastapi import FastAPI
-from sqlalchemy import Column,String,Integer,DateTime,func,ForeignKey,Table, null
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    DateTime,
+    func,
+    ForeignKey,
+    Table, 
+    null,
+    Boolean
+)
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -25,6 +37,13 @@ posts_category = Table(
     Column('category_id',Integer,ForeignKey('category.id'))
 )
 
+user_ticket = Table(
+    "User_ticket",
+    Base.metadata,
+    Column('user_id',Integer,ForeignKey('user.id')),
+    Column('ticketing_id',Integer,ForeignKey('ticketing.id'))
+)
+
 class User(Base):
     __tablename__ = 'user'
 
@@ -36,9 +55,11 @@ class User(Base):
     phone = Column(String(10),nullable=True,comment="電話")
     profile_img = Column(String(100),nullable=True)
 
+    ticket = relationship('Ticketing',secondary=user_ticket,back_populates="consumer")
     roles = relationship('Role',secondary=role_manager,back_populates='users')
     posts = relationship('Post',back_populates="creator")
     comments = relationship('Comment',back_populates="creator")
+
 
     follower = relationship(
         'User',
@@ -109,3 +130,17 @@ class Image(Base):
 
 
     created_at = Column(DateTime,server_default = func.now(),comment="建立時間")
+
+class Ticketing(Base):
+    __tablename__ = "ticketing"
+
+    id = Column(Integer,nullable=False,primary_key=True,autoincrement=True)
+    title = Column(String(50),nullable=False)
+    price = Column(Integer,nullable=False)
+    description = Column(String(100),nullable = True)
+    tickets = Column(Integer,nullable=False)
+    isSoldout = Column(Boolean,nullable=False,default=False)
+    consumer = relationship('User',secondary=user_ticket,back_populates='ticket')
+
+    
+
