@@ -4,9 +4,11 @@ from fastapi import (
     status,
     HTTPException,
     Request,
-    Cookie
+    Cookie,
+    Response
 )
 from typing import Optional
+from sqlalchemy import true
 # Database
 from sqlalchemy.orm import Session
 from database import get_db
@@ -16,6 +18,7 @@ from crud import *
 # Security
 from fastapi.security import OAuth2PasswordRequestForm
 from oauth import get_current_user
+import JWTtoken
 
 
 # Image Upload
@@ -25,20 +28,80 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 app = APIRouter(
-    prefix="/api"
+
 )
 
 
-@app.post("/register", tags=["User"])
-async def user_register(user: CreateUser, db: Session = Depends(get_db)):
+@app.post("/signup", tags=["User", "Api"])
+async def user_signup(user: CreateUser, db: Session = Depends(get_db)):
 
-    return await register(db, user)
+    new_user = models.User(
+        username=user.username,
+        password=Hash.bcrypt(user.password),
+    )
+
+    user_exist = db.query(models.User).filter(
+        models.User.username == user.username).first()
+    if user_exist:
+        raise HTTPException(409)
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
 
 
-@app.post("/upload_ProfileImg", tags=["User"])
-async def create_upload_file(file: UploadFile = File(...), user=Depends(get_current_user), db: Session = Depends(get_db)):
+@app.post("/verify", tags=["User", "Api"])
+async def user_login(response: Response, user_input=Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
 
-    FILEPATH = './static/images/'
+    user = db.query(models.User).filter(
+        models.User.username == user_input.username).first()
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail=f'沒有此用戶'
+        )
+    if not Hash.verify(user.password, user_input.password):
+        raise HTTPException(
+            status_code=401,
+            detail=f"使用者帳號或密碼錯誤!"
+        )
+    roles = []
+    for role in user.roles:
+        roles.append(role.name)
+    access_token = JWTtoken.create_access_token(
+        data={
+            "user": user.username,
+            "roles": roles,
+            'user_id': user.id
+        }
+    )
+    refresh_token = JWTtoken.create_access_token(
+        data={
+            "user": user.username,
+        }
+    )
+    response.set_cookie(key="jwt", value=refresh_token, httponly=True)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user.username,
+        "roles": roles,
+    }
+
+
+@app.get('/siguout', tags=['User', "Api"], deprecated=true)
+async def user_logout(response: Response, req: Request):
+    res = response.delete_cookie(key="jwt")
+
+    return 204
+
+
+@app.post("/user/profile-img", tags=["User", "Api"])
+async def upload_user_profile_img(file: UploadFile = File(...), user=Depends(get_current_user), db: Session = Depends(get_db)):
+
+    FILEPATH = './static/img/profile'
     filename = file.filename
 
     extension = filename.split(".")[1]
@@ -72,40 +135,23 @@ async def create_upload_file(file: UploadFile = File(...), user=Depends(get_curr
     return {"status": "ok", "filename": file_url}
 
 
-@app.get("/users", tags=["User"])
-async def get_user_all(db: Session = Depends(get_db)):
+@app.get("/dev/user", tags=["User", "Dev-Api"], response_model=List[UserAll])
+async def get_all_users(db: Session = Depends(get_db)):
 
-    # user = db.query(models.User).all()
-    return await getUser_all(db)
-    # return user
+    user = db.query(models.User).all()
 
+    return user
 
-@app.get("/userRoles/get/{username}", tags=["User"])
-async def get_user_roles(username: str, db: Session = Depends(get_db),):
-
-    return await getUserRoles(db, username)
+# TODO set get user roles orm_mode = true
 
 
-@app.post("/login", tags=["User"])
-async def user_login(response: Response, user_input=Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
-
-    return await loginUser(db, user_input, response)
-
-
-@app.get('/logout', tags=['User'])
-async def user_logout(response: Response, req: Request):
-    res = response.delete_cookie(key="jwt")
-
-    return 204
-
-
-@app.get("/user/me", tags=["User"])
+@app.get("/user/me", tags=["User", "Dev-Api"])
 async def userMe(user=Depends(get_current_user)):
 
     return user
 
 
-@app.get("/profile", tags=["User"], response_model=UserAll)
+@app.get("/profile", tags=["User", "Api"], response_model=UserAll)
 async def userMe(db: Session = Depends(get_db), user=Depends(get_current_user)):
 
     profile = db.query(models.User).filter(
@@ -114,55 +160,145 @@ async def userMe(db: Session = Depends(get_db), user=Depends(get_current_user)):
     return profile
 
 
-@app.post("/userRoles/add", tags=["User"])
+@app.patch("/user/roles/", tags=["User", "Api"])
 async def add_user_roles(username: User_addRoles, roles: List[str], db: Session = Depends(get_db)):
 
-    return await addUserRoles(db, username, roles)
+    for role in roles:
+        R = db.query(models.Role).filter(models.Role.name == role).first()
+
+        if not R:
+            raise HTTPException(404, detail=f"Role with name {role} Not Found")
+
+        user_role = db.query(models.User).filter(
+            models.User.username == username.name).first()
+        user_role.roles.append(R)
+
+    db.commit()
+
+    return "Roles Add Success!"
 
 
-@app.get("/refresh", tags=["User"])
+@app.get('/user/posts')
+async def get_user_posts(user_id, db: Session = Depends(get_db)):
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    return user.posts
+
+
+@app.get("/refresh", tags=["User", "Dev-Api"])
 async def refresh_token(jwt: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
 
-    return await refreshToken(jwt, db)
+    token = JWTtoken.decode_access_token(jwt)
+
+    user = db.query(models.User).filter(
+        models.User.username == token['user']).first()
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail=f'沒有此用戶'
+        )
+    roles = []
+    for role in user.roles:
+        roles.append(role.name)
+    access_token = JWTtoken.create_access_token(
+        data={
+            "user": user.username,
+            "roles": roles,
+            'user_id': user.id
+        },
+        expire_delta=0.5
+    )
+    return {
+        "accessToken": access_token,
+        "token_type": "bearer",
+        "user": user.username,
+        "roles": roles,
+    }
 
 
-@app.post("/role", tags=["Role"])
+@app.post("/role", tags=["Role", "Dev-Api"])
 async def create_role(role: CreateRole, db: Session = Depends(get_db)):
 
-    return await createRole(db, role)
+    new_role = models.Role(
+        name=role.name
+    )
+
+    role_exist = db.query(models.Role).filter(
+        models.Role.name == role.name).first()
+    if role_exist:
+        raise HTTPException(409)
+
+    db.add(new_role)
+    db.commit()
+    db.refresh(new_role)
+
+    return new_role
 
 
-@app.get("/role/{role_name}", tags=["Role"])
+@app.get("/role/{role_name}", tags=["Role", "Dev-Api"])
 async def get_role_byname(role_name: str, db: Session = Depends(get_db)):
 
-    return await getRole_byName(db, role_name)
+    role = db.query(models.Role).filter(models.Role.name == role_name).first()
+
+    if not role:
+        raise HTTPException(404, detail="Role Not Found")
+
+    return role
 
 
 @app.get("/role", tags=["Role"])
 async def get_role_all(db: Session = Depends(get_db)):
 
-    return await getRole_all(db)
+    role = db.query(models.Role).all()
+
+    if not db.query(models.Role).first():
+        raise HTTPException(404, detail="Role Not Found")
+
+    return role
 
 
-@app.get("/roleUsers/get/{name}", tags=["Role"])
+@app.get("/dev/role/{name}", tags=["Role", "Dev-Api"])
 async def get_role_users(name: str, db: Session = Depends(get_db)):
 
-    return await getRoleUser(db, name)
+    role = db.query(models.Role).filter(models.Role.name == name).first()
+
+    if not role:
+        raise HTTPException(404, detail="Role Not Found")
+
+    return role
 
 
-@app.put("/role/{role_name}", tags=["Role"])
+@app.patch("/role/{role_name}", tags=["Role"])
 async def update_role_byname(role_name: str, new_role: Role, db: Session = Depends(get_db)):
 
-    return await updateRoleName_byName(db, role_name, new_role)
+    role = db.query(models.Role).filter(models.Role.name == role_name)
+
+    if not role.first():
+        raise HTTPException(
+            404, detail=f"Role with name {role_name} Not Found")
+
+    role.update(new_role)
+    db.commit()
+
+    return "Update Role Success!"
 
 
 @app.delete("/role/{role_name}", tags=["Role"])
 async def delete_role_byname(role_name: str, db: Session = Depends(get_db)):
 
-    return await deleteRole_byName(db, role_name)
+    role = db.query(models.Role).filter(models.Role.name == role_name)
+
+    if not role.first():
+        raise HTTPException(
+            404, detail=f"Role with name {role_name} Not Found")
+
+    role.delete(synchronize_session=False)
+    db.commit()
+
+    return "Delete Role Successfully!"
 
 
-@app.get('/follow/')
+@app.post('/follow/', tags=["Api", "User"])
 async def user_follow(userid: Optional[str] = None, db: Session = Depends(get_db), user=Depends(get_current_user)):
 
     followedUser = db.query(models.User).filter(
@@ -174,7 +310,20 @@ async def user_follow(userid: Optional[str] = None, db: Session = Depends(get_db
     return followedUser.follower
 
 
-@app.get('/follower_all/{userid}')
+@app.delete('/follow', tags=["Api", "User"])
+async def user_follow(userid: Optional[str] = None, db: Session = Depends(get_db), user=Depends(get_current_user)):
+
+    unfollowedUser = db.query(models.User).filter(
+        models.User.id == userid).first()
+    currentUser = db.query(models.User).filter(
+        models.User.username == user['user']).first()
+
+    unfollowedUser.follower.remove(currentUser)
+    db.commit()
+    return unfollowedUser.follower
+
+
+@app.get('/follower_all/{userid}', tags=["Dev-Api", "User"])
 async def get_userfollower_all(userid: str, db=Depends(get_db)):
 
     user = db.query(models.User).filter(models.User.id == userid).first()

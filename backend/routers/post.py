@@ -27,12 +27,11 @@ from PIL import Image
 
 
 app = APIRouter(
-    prefix="/api",
     tags=['Post']
 )
 
 
-@app.post('/post')
+@app.post('/post', tags=["Api"])
 async def CreatePost(title=Form(...), post_img: Optional[UploadFile] = None, user=Depends(get_current_user), db: Session = Depends(get_db)):
 
     new_post = models.Post(
@@ -45,7 +44,7 @@ async def CreatePost(title=Form(...), post_img: Optional[UploadFile] = None, use
     db.commit()
     db.refresh(new_post)
 
-    FILEPATH = './static/images/'
+    FILEPATH = './static/img/post'
     filename = post_img.filename
 
     extension = filename.split(".")[1]
@@ -82,22 +81,9 @@ async def CreatePost(title=Form(...), post_img: Optional[UploadFile] = None, use
 
     return "Post Success"
 
-# @app.post('/postImg')
-# async def postImg(form = Form(...)):
-
-#     # file:UploadFile=File(...)
-#     return form
-
-
-@app.get('/post')
-async def testGet(user_id, db: Session = Depends(get_db)):
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    return user.posts
-
 
 @app.put('/post')
-async def postUpdate(post_id, title=Form(...), post_img: Optional[UploadFile] = None, user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def Updatepost(post_id, title=Form(...), post_img: Optional[UploadFile] = None, user=Depends(get_current_user), db: Session = Depends(get_db)):
 
     if not post_id:
         raise HTTPException(400)

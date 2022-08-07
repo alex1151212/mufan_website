@@ -1,20 +1,21 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from jose import JWTError,jwt
+from jose import JWTError, jwt
 from JWTtoken import *
 from database import SessionLocal
 import models
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="verify")
 
-def get_current_user(token:str = Depends(oauth2_scheme)):
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
-        payload = jwt.decode(token,SECRET_KEY,ALGORITHM)
+        payload = jwt.decode(token, SECRET_KEY, ALGORITHM)
         user = payload.get("user")
         roles = payload.get("roles")
-        user_id=payload.get('user_id')
-        return {"user":user,"role":roles,"user_id":user_id}
+        user_id = payload.get('user_id')
+        return {"user": user, "role": roles, "user_id": user_id}
     except:
         raise HTTPException(
             status_code=401, detail="Invalid Email or Password"
